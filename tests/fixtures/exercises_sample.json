@@ -1,0 +1,6 @@
+[
+  {"name": "Goblet Squat", "primaryMuscles": ["quadriceps"],
+   "equipment": "dumbbell", "images": ["GobletSquat/0.jpg"]},
+  {"name": "Push Up", "primaryMuscles": ["chest"],
+   "equipment": "body only", "images": ["PushUp/0.jpg"]}
+]

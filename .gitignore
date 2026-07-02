@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+data/raw/*
+data/generated/*
+!data/raw/.gitkeep
+!data/generated/.gitkeep
+outputs/
+*.gguf
+.pytest_cache/

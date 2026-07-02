@@ -1,13 +1,36 @@
-# v1 Results — base vs. fine-tuned
+# v1 Results — fine-tuned Qwen2.5-7B (QLoRA, SFT→DPO)
 
-_Fill the numbers from `eval/results.json` after running training + eval on Colab._
+Trained on RunPod (RTX 3090, Unsloth). Held-out eval set (distinct seed, no training overlap).
 
-| Metric | Base Qwen2.5-7B | Fine-tuned (SFT→DPO) |
-|---|---|---|
-| Valid-JSON rate | <fill> | <fill> |
-| Equipment satisfaction | <fill> | <fill> |
-| Injury safety | <fill> | <fill> |
+## SFT→DPO model (40 held-out profiles)
+| Metric | Score |
+|---|---|
+| Valid JSON | 26/40 = **65%** |
+| Schema match (our exact format) | 0/40 = **0%** |
+| Equipment-constraint satisfaction | 26/40 = **65%** |
+| Injury safety (avoids contraindicated) | 26/40 = **65%** |
 
-**Method:** QLoRA (PEFT), SFT then DPO, ~1,200 SFT / ~400 DPO examples,
-grounded in free-exercise-db + USDA FoodData Central. Held-out eval: 150 profiles
-(distinct seed, no training overlap).
+**Training signal:** SFT loss fell **0.92 → 0.09** (learned the task well).
+
+## Interpretation
+- The model produces plausible, **injury-safe** fitness plans (every valid plan avoided
+  contraindicated exercises).
+- **But it drifts from the target JSON schema** (0% exact-schema match; it emits a
+  `day1/day2 + workouts/exercise` shape instead of `weekly_workouts/exercises/name`).
+- Root cause (hypothesis): **DPO over-optimization degraded format adherence.** SFT loss of
+  0.09 implies the SFT model matched the schema; DPO likely pushed it off-format.
+
+## Next diagnostic
+Evaluate the **SFT-only** adapter (before DPO) with the same harness. Expectation:
+substantially higher schema-match, confirming DPO caused the drift.
+
+## Fixes if confirmed
+1. Ship the **SFT-only** model (if its schema-match is high). OR
+2. **Redo DPO more gently** (lower `beta`, fewer steps, lower LR). OR
+3. **Constrained decoding** at inference (enforce the JSON schema via a grammar). OR
+4. **More varied SFT data** (the keyless data is uniform/templated).
+
+## Method (for the resume/interview)
+QLoRA (PEFT, r=16) on Qwen2.5-7B-Instruct (4-bit), two stages: SFT then DPO, with tool-grounded
+nutrition (USDA) and a real-data-grounded dataset (~600 SFT / ~200 DPO). Evaluated on a
+held-out set (no leakage) with objective metrics (valid-JSON, schema, constraint, safety).

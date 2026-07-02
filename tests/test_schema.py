@@ -41,3 +41,11 @@ def test_bad_experience_enum_raises():
     bad = {**VALID, "experience": "pro"}
     with pytest.raises(ValidationError):
         FitnessPlan.model_validate(bad)
+
+
+def test_reps_int_is_coerced_to_string():
+    import copy
+    data = copy.deepcopy(VALID)
+    data["weekly_workouts"][0]["exercises"][0]["reps"] = 12  # model emits int
+    plan = FitnessPlan.model_validate(data)
+    assert plan.weekly_workouts[0].exercises[0].reps == "12"

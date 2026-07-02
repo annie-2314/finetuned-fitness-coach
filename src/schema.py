@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import Literal, Optional
-from pydantic import BaseModel
+from typing import Literal, Optional, Union
+from pydantic import BaseModel, field_validator
 
 
 class MealTime(BaseModel):
@@ -33,6 +33,12 @@ class ExerciseItem(BaseModel):
     rest_seconds: int
     demo_image: Optional[str] = None
     why: Optional[str] = None
+
+    @field_validator("reps", mode="before")
+    @classmethod
+    def _reps_to_str(cls, v):
+        # Models emit reps as 12 (int) or "10-12" (str); normalize to str.
+        return str(v)
 
 
 class WorkoutDay(BaseModel):

@@ -25,6 +25,20 @@ structured JSON plans with tool-grounded macros and safe coaching.
    proxy; Python's bundled CA list rejected GitHub (`CERTIFICATE_VERIFY_FAILED`). truststore
    uses the Windows trust store (which trusts the proxy CA). Chosen over `verify=False`.
 3. **Scripts run as modules** (`python -m scripts.download_data`) so package imports work.
+4. **`reps` int→str coercion (bug fix)** — the LLM emits `reps` as a number (`12`) or a
+   range string (`"10-12"`). The strict `reps: str` schema rejected 100% of the first pilot
+   (all 50 dropped). Added a Pydantic `field_validator(mode="before")` that normalizes reps
+   to `str`. After the fix the pilot passed 20/20.
+
+## Run log
+- **Pilot #1 (n=50):** 0/50 valid — uncovered the `reps` type bug (see deviation 4).
+- **Pilot #2 (n=20, post-fix):** 20/20 valid (100%). Sample plan verified: correct
+  schedule/meals/sleep timing, sets/reps/rest, macros, disclaimer; `why` populated only for
+  beginners (as designed).
+- **Scale decision:** lean first pass — **600 SFT + 200 DPO + 150 eval** (LIMA principle;
+  safer on Groq free-tier daily limits; expandable later). Generation running in background.
+- **Data-gen provider:** Groq `llama-3.3-70b-versatile` via OpenAI-compatible client;
+  single-call latency ~1s, full-plan generation ~3–4s each through the proxy.
 
 ---
 

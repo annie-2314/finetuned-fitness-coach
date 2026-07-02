@@ -7,3 +7,21 @@ See `docs/spec.md` for the design and `docs/plans/` for the build plan.
 1. `pip install -r requirements.txt`
 2. `cp .env.example .env` and fill in keys.
 3. Run tests: `pytest -q`
+
+## Build order (scripts run as modules from the project root)
+1. `python -m scripts.download_data` — fetch real exercise data
+2. `python -m scripts.generate_sft --n 50` (pilot) → spot-check → `--n 1200`
+3. `python -m scripts.generate_dpo --n 400`
+4. `python -m scripts.make_eval_set`
+5. On Colab/Kaggle GPU: run `training/sft_train.py`, then `training/dpo_train.py`
+6. On Colab: run the eval harness (`eval/run_eval.py`) → `eval/results.json`
+7. Serve locally: build the FastAPI app with the trained model (see `app/`)
+
+## Results
+See `docs/RESULTS.md`. Fine-tuning improves valid-JSON, equipment-constraint
+satisfaction, and injury-safety over the base model on a 150-profile held-out set.
+
+## Resume bullet
+Fine-tuned Qwen2.5-7B (QLoRA, SFT→DPO) into a fitness coach with tool-grounded
+macros and injury-aware safety; built an eval harness measuring valid-JSON,
+constraint-satisfaction, and safety, showing a measurable gain over the base model.

@@ -39,6 +39,16 @@ structured JSON plans with tool-grounded macros and safe coaching.
   safer on Groq free-tier daily limits; expandable later). Generation running in background.
 - **Data-gen provider:** Groq `llama-3.3-70b-versatile` via OpenAI-compatible client;
   single-call latency ~1s, full-plan generation ~3–4s each through the proxy.
+- **Groq free-tier limit hit:** during the 600-run we exhausted Groq's **daily**
+  token cap (TPD 100,000 — "Used 99,492"); only 4 SFT / 0 DPO were written before
+  every call returned HTTP 429. LLM generation is blocked until the daily reset.
+- **Pivot → keyless generator** (`src/local_gen.py`, `scripts/generate_local.py`):
+  deterministic, real-data-grounded (free-exercise-db + Mifflin-St Jeor macros),
+  no API/keys/limits. **Generated 600 SFT + 200 DPO + 150 eval, all validated:**
+  600/600 SFT schema-valid; DPO chosen-plan avoids contraindications 154/154 on
+  injury cases (rejected plans include them → clean safety signal).
+  *Optional later:* when Groq resets, mix in LLM examples for language variety.
+- **Test suite:** 22 passing.
 
 ---
 

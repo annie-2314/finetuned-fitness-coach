@@ -152,6 +152,41 @@ Result: **16 tests passing.**
 
 ---
 
+## Training & evaluation walkthrough (RunPod, what each step does + its output)
+
+Training was run on **RunPod (RTX 3090, 24 GB)** via `training/fitness_coach_runpod.ipynb`,
+after Colab's Unsloth/torchao dependency conflicts made it unusable.
+
+- **Cell 1 — GPU + files check.** Prints the GPU name and lists the 3 `.jsonl` files.
+  *Output:* `GPU: NVIDIA GeForce RTX 3090` + `['sft.jsonl','dpo.jsonl','eval.jsonl']`.
+- **Cell 2 — install Unsloth.** On RunPod's matched torch/CUDA image this installs cleanly.
+- **Cell 3 — SFT (stage 1).** Unsloth loads Qwen2.5-7B in 4-bit, attaches LoRA adapters, and
+  trains on the 600 SFT examples (2 epochs, 150 steps).
+  *Output:* `Trainable parameters = 40,370,176 of 7,655,986,688 (0.53%)` (proves QLoRA — only
+  0.53% of weights train), a falling training loss, and `SFT done`.
+  *Result:* loss fell **0.92 → 0.09** — the model learned the plan format well.
+- **Cell 4 — DPO (stage 2).** Continues from the SFT model, training on the 200 chosen/rejected
+  pairs so it prefers safe, injury-aware plans. *Output:* a loss line then `DPO done`.
+  *Gotcha:* a "kernel Idle but cell `[*]`" state means the cell was queued/interrupted, not
+  running — fix by Stop then re-running **only Cell 4** (never Restart Kernel — the in-memory
+  SFT model would be lost; it is, however, saved on disk at `outputs/sft-adapter`).
+- **Cell 5 — quick test.** Generates a plan for a knee-pain user. *Observation:* the plan
+  contained **no squats/lunges** (safety learned ✅). Using an abbreviated prompt here (not the
+  training format) made the model improvise a different JSON shape — expected for out-of-format prompts.
+- **Cell 6 — evaluation.** Runs the model over 100 held-out profiles (distinct seed) using the
+  exact training-format prompt, and reports valid-JSON %, schema-match %, equipment-satisfaction %,
+  and injury-safety %. The repeated `max_new_tokens/max_length` lines are harmless (one per
+  generation). The metric functions were hardened to tolerate inconsistent output shapes
+  (`'str' object has no attribute 'get'` came from assuming a fixed structure).
+- **Cell 7 — save.** Zips `outputs/dpo-adapter` for download (or push to HF Hub).
+
+### Observed model-quality note
+The fine-tuned model sometimes drifts from the exact `FitnessPlan` schema (e.g. a `day1/day2`
+shape with `workouts`/`exercise` instead of `weekly_workouts`/`exercises`/`name`). Likely causes:
+the keyless training data is highly uniform/templated, and/or DPO over-optimization. If schema-match
+comes out low, the fix is one of: reduce DPO strength (lower `beta`/epochs), add more varied SFT
+data, or constrain decoding to the JSON schema at serve time.
+
 ## Task status
 
 | Task | Component | Status |

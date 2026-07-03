@@ -1,0 +1,16 @@
+# Ollama Modelfile for the fine-tuned fitness coach (Qwen2.5-7B).
+# Edit the FROM line to match your downloaded .gguf filename, then:
+#   ollama create fitness-coach -f backend/Modelfile
+FROM ./fitness-coach.Q4_K_M.gguf
+
+# Qwen2.5 uses the ChatML template.
+TEMPLATE """{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+<|im_start|>assistant
+"""
+
+PARAMETER num_ctx 4096
+PARAMETER temperature 0.7
+PARAMETER stop "<|im_end|>"

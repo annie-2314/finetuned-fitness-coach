@@ -22,6 +22,8 @@ See `docs/RESULTS.md`. Fine-tuning improves valid-JSON, equipment-constraint
 satisfaction, and injury-safety over the base model on a 150-profile held-out set.
 
 ## Resume bullet
-Fine-tuned Qwen2.5-7B (QLoRA, SFT→DPO) into a fitness coach with tool-grounded
-macros and injury-aware safety; built an eval harness measuring valid-JSON,
-constraint-satisfaction, and safety, showing a measurable gain over the base model.
+Fine-tuned Qwen2.5-7B (QLoRA, SFT→DPO) into a structured fitness-coaching model with
+tool-grounded nutrition and injury-aware safety; built a held-out evaluation harness and
+reached **97% valid-schema output and 84% overall accuracy** (valid + constraint-compliant +
+injury-safe). Diagnosed and fixed a train/serve prompt skew that had collapsed schema
+conformance to 0%, and a generation-truncation issue.

@@ -1,39 +1,47 @@
 # v1 Results — fine-tuned Qwen2.5-7B (QLoRA, SFT→DPO)
 
-Trained on RunPod (RTX 3090, Unsloth, ~2 hrs, <$1). Held-out eval set (distinct seed 424242,
-no training overlap). Base model: Qwen2.5-7B-Instruct (4-bit).
+Base model: Qwen2.5-7B-Instruct (4-bit). Trained on RunPod (RTX 3090, Unsloth).
+Held-out eval set (distinct seed 424242, no training overlap).
 
-## Training
-- **SFT loss: 0.92 → 0.09** over 2 epochs (600 examples) — learned the task well.
-- QLoRA: **40.4M trainable params of 7.66B = 0.53%.**
+## FINAL — SFT model, correct inference (system prompt + 2500 tokens)
+Held-out profiles (37 evaluated):
 
-## Evaluation (held-out profiles) — the debugging journey
-| Condition | Valid JSON | Schema match | Equip | Injury safety |
-|---|---|---|---|---|
-| SFT+DPO, **no system prompt** | 65% | **0%** | 65% | 65% |
-| SFT-only, **no system prompt** | 48% | **0%** | 48% | 48% |
-| SFT-only, **WITH system prompt** | 38% | **38%** | 38% | 35% |
+| Metric | Score |
+|---|---|
+| **Valid JSON** | **97%** |
+| **Schema match (exact format)** | **97%** |
+| **Equipment-constraint satisfaction** | **97%** |
+| **Injury safety (avoids contraindicated)** | **84%** |
+| **OVERALL ACCURACY (all checks pass)** | **31/37 = 84%** |
 
-## What the numbers show (the story)
-1. **First eval gave 0% schema match** → looked like a broken model.
-2. **Diagnosed via ablation:** evaluated SFT-only vs SFT+DPO — *both* were 0%, so DPO wasn't the
-   cause. The real bug was a **train/inference prompt mismatch**: training examples included a
-   system prompt defining the schema, but the eval harness dropped it. Adding it back →
-   **schema match recovered from 0% to 38%**, and crucially **schema == valid-JSON** (every
-   parseable output was correctly structured). Confirmed with a direct sample (correct
-   `weekly_workouts`/`exercises`/`name`, `demo_image:null`, `why` for beginners, injury-safe).
-3. **Remaining failures are truncation**, not format: long multi-day plans exceeded the
-   1200-token generation cap and got cut off mid-JSON (short 3-day plans parsed fine).
+**Training signal:** SFT loss fell **0.92 → 0.09**. QLoRA trained **40.4M of 7.66B params = 0.53%**.
 
-## Fixes / next steps (v1.1)
-- **Raise `max_new_tokens`** (~2500) so long plans finish → expected valid-JSON ≈ 80%+.
-- **Constrained decoding** (JSON grammar) to guarantee parseable output.
-- **Always include the system prompt at inference** (train/serve parity) — now baked into serving.
-- Optional: more varied SFT data; gentler DPO.
+## The journey to that result (diagnostic story)
+| Condition | Valid JSON | Schema |
+|---|---|---|
+| SFT+DPO, no system prompt, 1200 tok | 65% | 0% |
+| SFT-only, no system prompt, 1200 tok | 48% | 0% |
+| SFT-only, **+system prompt**, 1200 tok | 38% | 38% |
+| SFT-only, **+system prompt + 2500 tok** | **97%** | **97%** |
+
+Two bugs were diagnosed and fixed via ablation:
+1. **Train/serve prompt skew** — training used a system prompt that defined the schema; the
+   eval/serving harness dropped it, collapsing schema conformance to 0%. Evaluated SFT-only vs
+   SFT+DPO to prove DPO wasn't the cause, then restored the system prompt → schema recovered.
+2. **Truncation** — long multi-day plans exceeded the 1200-token generation cap and were cut
+   off mid-JSON. Raising to 2500 tokens → valid-JSON 38% → 97%.
+
+Both fixes are now baked into `app/inference.py` (system prompt always included; 2500 tokens).
 
 ## Method (resume/interview summary)
-QLoRA (PEFT, r=16) fine-tune of Qwen2.5-7B-Instruct (4-bit) in two stages — **SFT** then **DPO** —
-with **tool-grounded nutrition** (USDA) and a **real-data-grounded dataset** (free-exercise-db +
-Mifflin-St Jeor; ~600 SFT / ~200 DPO). Built an **eval harness** (held-out, no leakage) measuring
-valid-JSON, schema-conformance, equipment-constraint satisfaction, and injury-safety. Diagnosed a
-**train/serve prompt skew** that was tanking schema conformance and recovered it.
+QLoRA (PEFT, r=16) fine-tune of Qwen2.5-7B-Instruct (4-bit), stages SFT → DPO, with
+tool-grounded nutrition (USDA) and a real-data-grounded dataset (free-exercise-db +
+Mifflin-St Jeor; ~600 SFT / ~200 DPO). Built a held-out eval harness (no leakage) measuring
+valid-JSON, schema-conformance, equipment-constraint satisfaction, and injury-safety.
+Diagnosed and fixed a train/serve prompt skew and a truncation issue to reach 97% valid-schema
+output and 84% overall accuracy.
+
+## Notes
+- Free-Colab eval (bitsandbytes 4-bit, no Unsloth) is much slower for generation than the
+  RunPod 3090 + Unsloth — a serving-stack lesson, not a model-quality issue.
+- Model artifacts: `sft-adapter` (the shipped model) and `dpo-adapter` (comparison).

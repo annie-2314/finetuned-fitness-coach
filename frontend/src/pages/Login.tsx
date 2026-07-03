@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { login, signup } from "../api";
 
 export default function Login() {
   const nav = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const loc = useLocation();
+  const initial = (loc.state as any)?.mode === "signup" ? "signup" : "login";
+  const [mode, setMode] = useState<"login" | "signup">(initial);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
@@ -15,32 +17,42 @@ export default function Login() {
     setErr(""); setBusy(true);
     try {
       if (mode === "signup") { await signup(email, password); nav("/onboarding"); }
-      else { await login(email, password); nav("/"); }
+      else { await login(email, password); nav("/dashboard"); }
     } catch (e: any) {
-      setErr(e?.response?.data?.detail || "Something went wrong");
+      setErr(e?.response?.data?.detail || "Couldn't sign in. Check your details and try again.");
     } finally { setBusy(false); }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <form onSubmit={submit} className="w-full max-w-sm bg-white rounded-2xl shadow p-8 space-y-4">
-        <h1 className="text-2xl font-bold text-center">🏋️ AI Fitness Coach</h1>
-        <p className="text-center text-slate-500 text-sm">
-          {mode === "login" ? "Welcome back" : "Create your account"}
-        </p>
-        <input className="w-full border rounded-lg px-3 py-2" type="email" placeholder="Email"
-          value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input className="w-full border rounded-lg px-3 py-2" type="password" placeholder="Password"
-          value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
-        {err && <p className="text-red-600 text-sm">{err}</p>}
-        <button disabled={busy} className="w-full bg-indigo-600 text-white rounded-lg py-2 font-medium disabled:opacity-50">
-          {busy ? "..." : mode === "login" ? "Log in" : "Sign up"}
+      <div className="w-full max-w-sm">
+        <button onClick={() => nav("/")} className="flex items-center gap-3 justify-center mb-8 mx-auto">
+          <div className="grad-energy w-11 h-11 rounded-2xl grid place-items-center text-white text-xl shadow-glow">⚡</div>
+          <span className="font-display text-2xl font-bold tracking-tight">Coach<span className="text-grad">AI</span></span>
         </button>
-        <button type="button" className="w-full text-sm text-indigo-600"
-          onClick={() => setMode(mode === "login" ? "signup" : "login")}>
-          {mode === "login" ? "New here? Create an account" : "Have an account? Log in"}
-        </button>
-      </form>
+        <form onSubmit={submit} className="card p-7 space-y-4">
+          <div>
+            <h1 className="font-display text-xl font-bold">
+              {mode === "login" ? "Welcome back" : "Start training smarter"}
+            </h1>
+            <p className="text-muted text-sm mt-1">
+              {mode === "login" ? "Log in to see today's plan." : "Create an account — it takes 10 seconds."}
+            </p>
+          </div>
+          <input className="inp" type="email" placeholder="Email"
+            value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input className="inp" type="password" placeholder="Password (min 6 characters)"
+            value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+          {err && <p className="text-energyFrom text-sm">{err}</p>}
+          <button disabled={busy} className="btn-energy w-full py-2.5">
+            {busy ? "One sec…" : mode === "login" ? "Log in" : "Create account"}
+          </button>
+          <button type="button" className="w-full text-sm text-muted hover:text-ink transition-colors"
+            onClick={() => { setErr(""); setMode(mode === "login" ? "signup" : "login"); }}>
+            {mode === "login" ? "New here? Create an account" : "Already have an account? Log in"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

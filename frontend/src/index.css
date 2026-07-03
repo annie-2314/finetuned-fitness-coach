@@ -2,6 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
+:root { color-scheme: dark; }
+
 body {
-  @apply bg-slate-50 text-slate-800 antialiased;
+  @apply bg-bg text-ink font-sans antialiased;
+}
+
+/* Ambient warm/cool glow behind everything */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(620px circle at 12% -8%, rgba(255, 94, 98, 0.12), transparent 42%),
+    radial-gradient(560px circle at 100% 0%, rgba(34, 211, 168, 0.09), transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+#root { position: relative; z-index: 1; }
+
+@layer components {
+  .card { @apply bg-surface border border-hair rounded-2xl shadow-card; }
+  .grad-energy { background-image: linear-gradient(135deg, #FF5E62, #FF9E5C); }
+  .text-grad {
+    background: linear-gradient(135deg, #FF8A6B, #FFB25C);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .btn-energy {
+    @apply grad-energy text-white font-semibold rounded-xl shadow-glow
+           transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0
+           disabled:opacity-50 disabled:hover:translate-y-0;
+  }
+  .btn-ghost {
+    @apply border border-hair text-ink/90 rounded-xl bg-surface2/60
+           transition-colors hover:border-muted/60;
+  }
+  .inp {
+    @apply bg-surface2 border border-hair rounded-xl px-3 py-2 text-ink
+           placeholder:text-muted focus:outline-none focus:border-energyTo/70
+           focus:ring-2 focus:ring-energyFrom/20 w-full;
+  }
+  .chip { @apply rounded-full px-3 py-1 text-sm border border-hair bg-surface2/70; }
+  .stat { @apply font-mono tabular-nums; }
+}
+
+/* Focus visibility for keyboard users */
+:focus-visible { outline: 2px solid #FF9E5C; outline-offset: 2px; }
+
+/* Slim dark scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #2A3448; border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
 }

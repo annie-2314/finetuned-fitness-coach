@@ -8,6 +8,22 @@ api.interceptors.request.use((cfg) => {
   return cfg;
 });
 
+// If a token is stale/invalid, clear it and send the user to login.
+// (Don't do this for the login/signup calls themselves — those show a form error.)
+api.interceptors.response.use(
+  (r) => r,
+  (err) => {
+    const url: string = err?.config?.url || "";
+    if (err?.response?.status === 401 && !url.includes("/auth/")) {
+      localStorage.removeItem("token");
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.assign("/login");
+      }
+    }
+    return Promise.reject(err);
+  }
+);
+
 export function isLoggedIn(): boolean {
   return !!localStorage.getItem("token");
 }

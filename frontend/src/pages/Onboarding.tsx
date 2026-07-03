@@ -25,7 +25,7 @@ export default function Onboarding() {
     setBusy(true); setErr("");
     try {
       await api.put("/profile", { ...f, injury: f.injury || null });
-      nav("/");
+      nav("/dashboard");
     } catch (e: any) {
       setErr(e?.response?.data?.detail || "Couldn't save your profile. Try again.");
     } finally { setBusy(false); }

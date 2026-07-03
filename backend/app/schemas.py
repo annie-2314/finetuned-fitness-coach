@@ -97,9 +97,22 @@ class ProfileIn(BaseModel):
     experience: Literal["beginner", "intermediate", "advanced"] = "beginner"
     injury: Optional[str] = None
     days_per_week: int = 3
+    preferred_foods: Optional[str] = None
+    avoid_foods: Optional[str] = None
 
 
 class ProfileOut(ProfileIn):
+    id: int
+
+
+class FoodLogIn(BaseModel):
+    name: str
+    meal: str = "snack"
+    calories: int = 0
+    protein_g: int = 0
+
+
+class FoodLogOut(FoodLogIn):
     id: int
 
 

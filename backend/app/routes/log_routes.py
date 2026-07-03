@@ -1,3 +1,5 @@
+from datetime import datetime, timezone, timedelta
+from collections import defaultdict
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -38,3 +40,19 @@ def progress(user: User = Depends(current_user), db: Session = Depends(get_db)):
             by_exercise.setdefault(l.exercise, []).append(l.weight_kg)
     top_lifts = {k: max(v) for k, v in by_exercise.items()}
     return {"total_sessions": total, "avg_rpe": avg_rpe, "top_lifts": top_lifts}
+
+
+@router.get("/timeseries")
+def timeseries(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Daily sessions + avg RPE for the last 14 days (for the progress charts)."""
+    rows = db.query(WorkoutLog).filter(WorkoutLog.user_id == user.id).all()
+    cnt, rpe_sum, rpe_n = defaultdict(int), defaultdict(int), defaultdict(int)
+    for r in rows:
+        d = r.logged_at.date().isoformat()
+        cnt[d] += 1
+        if r.rpe:
+            rpe_sum[d] += r.rpe; rpe_n[d] += 1
+    today = datetime.now(timezone.utc).date()
+    days = [(today - timedelta(days=i)).isoformat() for i in range(13, -1, -1)]
+    return [{"date": d[5:], "sessions": cnt.get(d, 0),
+             "avg_rpe": round(rpe_sum[d] / rpe_n[d], 1) if rpe_n.get(d) else 0} for d in days]

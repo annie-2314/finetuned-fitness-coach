@@ -32,6 +32,10 @@ def build_user_prompt(p: dict, adaptation: str | None = None) -> str:
             f"experience: {p['experience']}, injury: {p.get('injury')}, "
             f"{p['days_per_week']} days/week. Tailor calories/macros to the user's sex. "
             f"Return the JSON plan.")
+    if p.get("preferred_foods"):
+        base += f" Prefer these foods in the meal plan: {p['preferred_foods']}."
+    if p.get("avoid_foods"):
+        base += f" Avoid these foods: {p['avoid_foods']}."
     if adaptation:
         base += f"\nAdapt based on recent feedback: {adaptation}"
     return base

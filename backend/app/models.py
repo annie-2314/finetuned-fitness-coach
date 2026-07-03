@@ -33,6 +33,8 @@ class Profile(Base):
     experience: Mapped[str] = mapped_column(String(32), default="beginner")
     injury: Mapped[str | None] = mapped_column(String(64), nullable=True)
     days_per_week: Mapped[int] = mapped_column(Integer, default=3)
+    preferred_foods: Mapped[str | None] = mapped_column(Text, nullable=True)
+    avoid_foods: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="profile")
 
@@ -62,3 +64,14 @@ class WorkoutLog(Base):
     logged_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
     user: Mapped["User"] = relationship(back_populates="logs")
+
+
+class FoodLog(Base):
+    __tablename__ = "food_logs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    meal: Mapped[str] = mapped_column(String(32), default="snack")
+    calories: Mapped[int] = mapped_column(Integer, default=0)
+    protein_g: Mapped[int] = mapped_column(Integer, default=0)
+    logged_at: Mapped[datetime] = mapped_column(DateTime, default=_now)

@@ -129,11 +129,13 @@ def gen(p):
          f"equipment: {p['equipment']}, diet: {p['diet']}, experience: {p['experience']}, "
          f"injury: {p['injury']}, {p['days_per_week']} days/week. Return the JSON plan.")
     msgs = [{"role":"system","content":SYSTEM}, {"role":"user","content":u}]
-    ids = tok.apply_chat_template(msgs, return_tensors="pt", add_generation_prompt=True).to(model.device)
+    enc = tok.apply_chat_template(msgs, add_generation_prompt=True,
+                                  return_tensors="pt", return_dict=True).to(model.device)
+    in_len = enc["input_ids"].shape[1]
     with torch.no_grad():
-        out = model.generate(input_ids=ids, max_new_tokens=2500, do_sample=True,
+        out = model.generate(**enc, max_new_tokens=2500, do_sample=True,
                              temperature=0.7, pad_token_id=tok.eos_token_id)
-    return tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True)
+    return tok.decode(out[0][in_len:], skip_special_tokens=True)
 
 rows = [json.loads(l) for l in open("eval.jsonl")][:40]
 valid = schema = eq = inj = passed = 0

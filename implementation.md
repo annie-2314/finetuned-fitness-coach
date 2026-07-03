@@ -111,6 +111,87 @@ model from scratch (that needs trillions of tokens); we **fine-tune** an existin
 > schema-validated. Evaluated on a held-out split with objective metrics (97% valid-schema,
 > 84% overall). Diagnosed a train/serve prompt skew and a truncation issue to get there.
 
+### Code, step by step
+
+**(a) Load base model in 4-bit + attach LoRA adapters (QLoRA)**
+```python
+from unsloth import FastLanguageModel
+
+MODEL = "unsloth/Qwen2.5-7B-Instruct-bnb-4bit"
+model, tok = FastLanguageModel.from_pretrained(MODEL, max_seq_length=4096, load_in_4bit=True)
+
+model = FastLanguageModel.get_peft_model(
+    model, r=16, lora_alpha=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                    "gate_proj", "up_proj", "down_proj"])
+# -> Trainable parameters = 40,370,176 of 7,655,986,688 (0.53%)
+```
+
+**(b) One SFT training example (chat-format JSONL line)**
+```json
+{"messages": [
+  {"role": "system", "content": "You are an expert fitness coach... output ONLY JSON matching this schema: goal, experience, daily_schedule{...}, weekly_workouts[{day, focus, exercises[{name,sets,reps,rest_seconds,demo_image,why}]}], nutrition{...}, disclaimer..."},
+  {"role": "user", "content": "Profile: 30yo male, 80kg, goal: lose fat, equipment: home dumbbells, injury: knee pain, 3 days/week. Return the JSON plan."},
+  {"role": "assistant", "content": "{\"goal\":\"lose fat\",\"experience\":\"beginner\",\"weekly_workouts\":[...],\"nutrition\":{...},\"disclaimer\":\"...\"}"}
+]}
+```
+
+**(c) Stage 1 — SFT**
+```python
+from datasets import load_dataset
+from trl import SFTTrainer, SFTConfig
+
+ds = load_dataset("json", data_files="sft.jsonl", split="train")
+ds = ds.map(lambda ex: {"text": tok.apply_chat_template(ex["messages"], tokenize=False)})
+
+trainer = SFTTrainer(
+    model=model, tokenizer=tok, train_dataset=ds,
+    args=SFTConfig(dataset_text_field="text", max_seq_length=4096,
+        per_device_train_batch_size=2, gradient_accumulation_steps=4,  # eff. batch 8
+        num_train_epochs=2, learning_rate=2e-4, optim="adamw_8bit", logging_steps=10,
+        output_dir="outputs/sft"))
+trainer.train()                                   # loss 0.92 -> 0.09
+model.save_pretrained("outputs/sft-adapter"); tok.save_pretrained("outputs/sft-adapter")
+```
+
+**(d) One DPO preference pair + Stage 2 — DPO**
+```python
+# pair:  {"prompt": "...knee pain...", "chosen": "<safe JSON plan>", "rejected": "<reckless JSON plan>"}
+from trl import DPOTrainer, DPOConfig
+
+dpo_ds = load_dataset("json", data_files="dpo.jsonl", split="train")
+trainer = DPOTrainer(
+    model=model, tokenizer=tok, train_dataset=dpo_ds,
+    args=DPOConfig(beta=0.1, per_device_train_batch_size=1, gradient_accumulation_steps=4,
+        num_train_epochs=1, learning_rate=5e-5, max_length=4096, max_prompt_length=1024,
+        optim="adamw_8bit", output_dir="outputs/dpo"))
+trainer.train()
+model.save_pretrained("outputs/dpo-adapter"); tok.save_pretrained("outputs/dpo-adapter")
+```
+
+**(e) Inference with train/serve parity (system prompt + enough tokens)**
+```python
+FastLanguageModel.for_inference(model)
+msgs = [{"role": "system", "content": SYSTEM},          # SAME system prompt as training
+        {"role": "user", "content": "Profile: 35yo female, 70kg, lose fat, ... Return the JSON plan."}]
+ids = tok.apply_chat_template(msgs, return_tensors="pt", add_generation_prompt=True).to(model.device)
+out = model.generate(input_ids=ids, max_new_tokens=2500, temperature=0.7)  # 2500 avoids truncation
+plan = tok.decode(out[0][ids.shape[1]:], skip_special_tokens=True)
+```
+
+**(f) Evaluation metric (held-out, objective)**
+```python
+def schema_ok(plan):        # did the model produce our exact structure?
+    wk = plan.get("weekly_workouts")
+    return (isinstance(wk, list) and wk and isinstance(wk[0], dict)
+            and isinstance(wk[0].get("exercises"), list) and "nutrition" in plan)
+
+def avoids_injury(names, injury):   # safety check
+    bad = {"knee pain": ["squat", "lunge", "leg press"], ...}.get(injury, [])
+    return not any(b in n.lower() for n in names for b in bad)
+# run over 150 held-out profiles -> valid 97% | schema 97% | injury-safe 84%
+```
+
 ## Environment
 
 - **OS:** Windows 11 · **Python:** 3.12.10 · **Git:** 2.53 (local repo, branch `main`, no remote).

@@ -150,3 +150,34 @@ Measured on the held-out set, **base vs. fine-tuned**:
 - **Purrfessor** (arXiv 2411.14925) — fine-tuned diet chatbot on USDA + Recipe1M.
 - **FormCoach** (arXiv 2508.07501) — LLM strength coaching.
 - **LIMA** — "Less Is More for Alignment" (data-quality-over-quantity principle).
+
+
+Task 1: Project scaffold + git init + deps
+
+Task 2: Plan JSON schema (TDD)
+
+Task 3: USDA nutrition tool (TDD)
+
+Task 4: Exercise DB + media lookup (TDD)
+
+Task 5: Download real datasets script
+
+Task 6: SFT data generation + profiles (TDD)
+
+Task 7: Curation + media enrichment (TDD)
+
+Task 8: DPO pair generation
+
+Task 9: Held-out eval set builder
+
+Task 10: QLoRA SFT training script (Colab)
+
+Task 11: QLoRA DPO training script (Colab)
+
+Task 12: Eval metrics (TDD)
+
+Task 13: Eval harness runner
+
+Task 14: FastAPI demo app (TDD)
+
+Task 15: Results documentation

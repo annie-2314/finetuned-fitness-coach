@@ -10,6 +10,35 @@ structured JSON plans with tool-grounded macros and safe coaching.
 
 ---
 
+## End-to-end flow — what we actually did (step by step)
+
+1. **Scoped the project** — chose a fine-tuning *showcase* (fitness coach that outputs
+   structured JSON plans) to prove model-training skill; wrote `docs/spec.md`.
+2. **Built v1 code with TDD** — JSON schema, USDA nutrition tool, exercise-DB media lookup,
+   curation, eval metrics, FastAPI app, training + eval scripts. **22 unit tests, all green.**
+3. **Built the dataset** — first tried LLM generation via Groq → hit the **free-tier daily
+   token limit** → pivoted to a **keyless generator** grounded in real data (free-exercise-db +
+   Mifflin-St Jeor macros). Produced **600 SFT + 200 DPO + 150 held-out eval**, all validated.
+4. **Trained the model** — Colab failed with **Unsloth/torchao dependency conflicts** → moved
+   to **RunPod (RTX 3090)** → QLoRA **SFT** (loss 0.92 → 0.09), then **DPO**. Both adapters saved.
+5. **Evaluated (round 1)** — SFT+DPO scored **0% schema match** → looked broken.
+6. **Diagnosed via ablation** — evaluated **SFT-only vs SFT+DPO**; both 0% → **DPO wasn't the
+   cause.** Real bug: a **train/serve prompt skew** — the eval dropped the system prompt the
+   model was trained with.
+7. **Fix 1 (system prompt)** — restored it at inference → schema **0% → 38%**; revealed a
+   second issue: **truncation** (long plans cut off at 1200 tokens).
+8. **Fix 2 (token limit)** — raised generation to **2500 tokens** → valid-JSON **38% → 97%**.
+9. **Final eval** — ran on **free Colab** with a **no-Unsloth** stack (transformers + peft +
+   bitsandbytes) to avoid the earlier dependency hell → **97% valid / 97% schema / 84% overall
+   accuracy** on held-out profiles. (The evaluated/shipped model is the **SFT checkpoint**;
+   DPO was implemented but not the finalized one.)
+10. **Hardened serving** — baked both fixes into `app/inference.py` (system prompt always
+    included; 2500-token generation). Recorded results in `docs/RESULTS.md` + resume bullet.
+
+**Key lessons:** environment/dependency matching matters (Colab vs RunPod); train/serve
+parity is critical (the system prompt); low training loss ≠ good output (held-out eval + the
+truncation catch); ablation isolates the real cause.
+
 ## Environment
 
 - **OS:** Windows 11 · **Python:** 3.12.10 · **Git:** 2.53 (local repo, branch `main`, no remote).

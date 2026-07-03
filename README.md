@@ -22,8 +22,10 @@ See `docs/RESULTS.md`. Fine-tuning improves valid-JSON, equipment-constraint
 satisfaction, and injury-safety over the base model on a 150-profile held-out set.
 
 ## Resume bullet
-Fine-tuned Qwen2.5-7B (QLoRA, SFT→DPO) into a structured fitness-coaching model with
-tool-grounded nutrition and injury-aware safety; built a held-out evaluation harness and
-reached **97% valid-schema output and 84% overall accuracy** (valid + constraint-compliant +
-injury-safe). Diagnosed and fixed a train/serve prompt skew that had collapsed schema
-conformance to 0%, and a generation-truncation issue.
+Built a QLoRA fine-tuning pipeline (SFT → DPO) for Qwen2.5-7B into a structured
+fitness-coaching model with tool-grounded nutrition and injury-aware safety. Via an
+**ablation** identified the SFT checkpoint as the best model and, after fixing a train/serve
+prompt skew (schema 0%→97%) and a generation-truncation issue, reached **97% valid-schema
+output and 84% overall accuracy** on a held-out eval set.
+
+_(Note: SFT and DPO were both implemented; the 97% figure is the evaluated/shipped SFT model.)_

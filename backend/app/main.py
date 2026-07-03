@@ -1,3 +1,10 @@
+# Trust the OS certificate store BEFORE any HTTPS call (corporate SSL-inspection proxy).
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except Exception:
+    pass
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings

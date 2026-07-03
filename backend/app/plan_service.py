@@ -27,10 +27,11 @@ _exercise_db = ExerciseDB()
 
 
 def build_user_prompt(p: dict, adaptation: str | None = None) -> str:
-    base = (f"Profile: {p['age']}yo, {p['weight_kg']}kg, goal: {p['goal']}, "
-            f"equipment: {p['equipment']}, diet: {p['diet']}, "
+    base = (f"Profile: {p['age']}yo {p.get('sex', 'unspecified')}, {p['weight_kg']}kg, "
+            f"goal: {p['goal']}, equipment: {p['equipment']}, diet: {p['diet']}, "
             f"experience: {p['experience']}, injury: {p.get('injury')}, "
-            f"{p['days_per_week']} days/week. Return the JSON plan.")
+            f"{p['days_per_week']} days/week. Tailor calories/macros to the user's sex. "
+            f"Return the JSON plan.")
     if adaptation:
         base += f"\nAdapt based on recent feedback: {adaptation}"
     return base

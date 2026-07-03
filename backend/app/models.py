@@ -26,6 +26,7 @@ class Profile(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
     age: Mapped[int] = mapped_column(Integer)
     weight_kg: Mapped[int] = mapped_column(Integer)
+    sex: Mapped[str] = mapped_column(String(16), default="male")
     goal: Mapped[str] = mapped_column(String(64))
     equipment: Mapped[str] = mapped_column(String(64))
     diet: Mapped[str] = mapped_column(String(64), default="no restriction")

@@ -10,7 +10,7 @@ router = APIRouter(tags=["plan"])
 
 
 def _profile_dict(p: Profile) -> dict:
-    return {"age": p.age, "weight_kg": p.weight_kg, "goal": p.goal,
+    return {"age": p.age, "weight_kg": p.weight_kg, "sex": p.sex, "goal": p.goal,
             "equipment": p.equipment, "diet": p.diet, "experience": p.experience,
             "injury": p.injury, "days_per_week": p.days_per_week}
 

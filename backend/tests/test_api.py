@@ -29,7 +29,7 @@ def test_health(client):
 
 def test_full_flow(client):
     h = _auth(client)
-    prof = {"age": 30, "weight_kg": 80, "goal": "lose fat", "equipment": "home dumbbells",
+    prof = {"age": 30, "weight_kg": 80, "sex": "male", "goal": "lose fat", "equipment": "home dumbbells",
             "diet": "no restriction", "experience": "beginner", "injury": None, "days_per_week": 3}
     assert client.put("/profile", json=prof, headers=h).status_code == 200
     r = client.post("/plan/generate", headers=h)

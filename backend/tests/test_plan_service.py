@@ -16,9 +16,9 @@ VALID_PLAN = {
     "disclaimer": "General guidance, not medical advice.",
 }
 
-PROFILE = {"age": 30, "weight_kg": 80, "goal": "lose fat", "equipment": "home dumbbells",
-           "diet": "no restriction", "experience": "beginner", "injury": "knee pain",
-           "days_per_week": 3}
+PROFILE = {"age": 30, "weight_kg": 80, "sex": "female", "goal": "lose fat",
+           "equipment": "home dumbbells", "diet": "no restriction",
+           "experience": "beginner", "injury": "knee pain", "days_per_week": 3}
 
 
 def test_build_user_prompt_includes_profile_and_adaptation():

@@ -90,6 +90,7 @@ class TokenResponse(BaseModel):
 class ProfileIn(BaseModel):
     age: int
     weight_kg: int
+    sex: Literal["male", "female", "other"] = "male"
     goal: str
     equipment: str
     diet: str = "no restriction"

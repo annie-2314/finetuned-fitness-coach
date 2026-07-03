@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 
+const SEXES = ["male", "female", "other"];
 const GOALS = ["lose fat", "build muscle", "maintain", "gain strength"];
 const EQUIPMENT = ["full gym", "home dumbbells", "bodyweight only", "resistance bands"];
 const DIETS = ["no restriction", "vegetarian", "vegan", "keto"];
@@ -11,7 +12,7 @@ const INJURIES = ["", "knee pain", "shoulder impingement", "lower back pain"];
 export default function Onboarding() {
   const nav = useNavigate();
   const [f, setF] = useState({
-    age: 30, weight_kg: 75, goal: "lose fat", equipment: "home dumbbells",
+    age: 30, weight_kg: 75, sex: "male", goal: "lose fat", equipment: "home dumbbells",
     diet: "no restriction", experience: "beginner", injury: "", days_per_week: 3,
   });
   const [busy, setBusy] = useState(false);
@@ -49,6 +50,8 @@ export default function Onboarding() {
             onChange={(e) => upd("age", +e.target.value)} /></Field>
           <Field label="Weight (kg)"><input type="number" className="inp" value={f.weight_kg} min={35} max={200}
             onChange={(e) => upd("weight_kg", +e.target.value)} /></Field>
+          <Field label="Sex"><select className="inp" value={f.sex} onChange={(e) => upd("sex", e.target.value)}>
+            {SEXES.map((g) => <option key={g} className="bg-surface2">{g}</option>)}</select></Field>
           <Field label="Goal"><select className="inp" value={f.goal} onChange={(e) => upd("goal", e.target.value)}>
             {GOALS.map((g) => <option key={g} className="bg-surface2">{g}</option>)}</select></Field>
           <Field label="Equipment"><select className="inp" value={f.equipment} onChange={(e) => upd("equipment", e.target.value)}>

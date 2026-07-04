@@ -1,62 +1,85 @@
-# Adaptive AI Fitness Coach
+# 🏋️ Adaptive AI Fitness Coach
 
-Fine-tuned (QLoRA, SFT→DPO) fitness coach that outputs structured JSON plans.
-See `docs/spec.md` for the design and `docs/plans/` for the build plan.
+A **fine-tuned LLM** that generates structured, injury-aware workout + nutrition plans —
+wrapped in a **full-stack app** that logs workouts and **adapts the plan each week**.
 
-## Setup
-1. `pip install -r requirements.txt`
-2. `cp .env.example .env` and fill in keys.
-3. Run tests: `pytest -q`
+The point of the project is to demonstrate **model fine-tuning and rigorous evaluation**
+(QLoRA · SFT → DPO), then ship it end-to-end behind a swappable serving layer.
 
-## Build order (scripts run as modules from the project root)
-1. `python -m scripts.download_data` — fetch real exercise data
-2. `python -m scripts.generate_sft --n 50` (pilot) → spot-check → `--n 1200`
-3. `python -m scripts.generate_dpo --n 400`
-4. `python -m scripts.make_eval_set`
-5. On Colab/Kaggle GPU: run `training/sft_train.py`, then `training/dpo_train.py`
-6. On Colab: run the eval harness (`eval/run_eval.py`) → `eval/results.json`
-7. Serve locally: build the FastAPI app with the trained model (see `app/`)
+## 🎯 Headline result
+Fine-tuned **Qwen2.5-7B** (QLoRA, SFT→DPO) → **97% valid-schema output** and **84% overall
+accuracy** (valid + constraint-compliant + injury-safe) on a held-out eval set, after
+diagnosing a **train/serve prompt skew** (schema 0%→97%) and a generation-truncation issue.
 
-## Full-stack app (v2/v3)
-- `backend/` — FastAPI + PostgreSQL + JWT auth + plan generation + adaptive loop
-- `frontend/` — React + Vite + TypeScript + Tailwind (auth, onboarding, plan view with
-  exercise images, workout logging, progress, "adapt next week")
+See the numbers in [`docs/RESULTS.md`](docs/RESULTS.md), the full write-up (with code) in
+[`implementation.md`](implementation.md), and the **executed** eval in
+[`training/03_evaluation_results.ipynb`](training/03_evaluation_results.ipynb).
 
-### Run it
-**1. Database:** create the Postgres DB (once):
+## 🧠 The fine-tuning (in one paragraph)
+QLoRA (PEFT) fine-tune of Qwen2.5-7B-Instruct in 4-bit: freeze the base, train rank-16 LoRA
+adapters (**0.53% of params**) in two stages — **SFT** (imitate ideal JSON plans; loss
+0.92→0.09) then **DPO** (prefer safe over reckless plans; RLHF-free). Data is real-grounded
+synthetic (free-exercise-db + Mifflin-St Jeor), schema-validated. Nutrition macros and exercise
+images are **looked up from real sources**, never hallucinated.
+
+## 📓 Notebooks (`training/`)
+| Notebook | What it does |
+|---|---|
+| `01_finetune_qlora_sft_dpo.ipynb` | Fine-tune Qwen2.5-7B (QLoRA: SFT → DPO) |
+| `02_evaluate.ipynb` | Evaluation harness (no-Unsloth, transformers+peft) |
+| `03_evaluation_results.ipynb` | **Executed eval with the real 97% / 84% results** |
+| `04_export_to_gguf.ipynb` | Export the adapter to GGUF for local serving (Ollama) |
+| `sft_train.py` / `dpo_train.py` | Standalone training scripts |
+
+## 🗂️ Repo structure
+```
+ai-fitness-coach/
+├── training/     # fine-tuning + eval + export notebooks/scripts
+├── src/          # core modules: schema, nutrition tool, exercise lookup, metrics, data gen
+├── scripts/      # data download + dataset generation
+├── eval/         # eval harness
+├── backend/      # FastAPI + PostgreSQL + JWT + plan generation + adaptive loop
+├── frontend/     # React + Vite + TypeScript + Tailwind (dashboard UI)
+└── docs/         # spec, plan, results, Ollama & Colab/RunPod guides
+```
+
+## 🚀 Run the full-stack app
+**1. Database** (once):
 ```
 psql -U postgres -c "CREATE DATABASE fitness_coach;"
 ```
 **2. Backend:**
 ```
 cd backend
-python -m venv venv && venv\Scripts\activate      # optional
 pip install -r requirements.txt
-copy .env.example .env    # then fill DATABASE_URL + LLM_API_KEY + USDA_API_KEY
+copy .env.example .env      # fill DATABASE_URL + LLM_API_KEY
 uvicorn app.main:app --reload --port 8000
 ```
 **3. Frontend:**
 ```
 cd frontend
 npm install
-npm run dev            # http://localhost:5173
+npm run dev                 # http://localhost:5173
 ```
-Open http://localhost:5173 → sign up → onboarding → generate a plan → log workouts → adapt.
+Sign up → onboarding → **Generate my plan** → log workouts → **Adapt next week**.
 
-### Which model generates the plans?
-- **Default:** a hosted base model (Groq/OpenRouter) via `LLM_BASE_URL` + your system prompt.
-- **Your fine-tuned model:** follow `docs/OLLAMA_SETUP.md` — export to GGUF, run in Ollama,
-  and set `LLM_BASE_URL=http://localhost:11434/v1`. One `.env` change, no code edits.
+## 🔌 Which model serves the plans? (swappable — one `.env` line)
+The backend calls the model through an **OpenAI-compatible endpoint**, so it's provider-agnostic:
+- **Hosted API (Groq/OpenRouter)** — default; free, instant, no GPU.
+- **Your fine-tuned model via Ollama** — export to GGUF, run locally, set
+  `LLM_BASE_URL=http://localhost:11434/v1`. See [`docs/OLLAMA_SETUP.md`](docs/OLLAMA_SETUP.md).
+- **vLLM on a GPU** — for production.
 
-## Results
-See `docs/RESULTS.md`. Fine-tuning reached **97% valid-schema output and 84% overall accuracy**
-on a held-out set (after fixing a train/serve prompt skew + a truncation issue).
+## 🧰 Tech stack
+**ML:** Qwen2.5-7B, QLoRA/PEFT, TRL (SFT/DPO), Unsloth, transformers, GGUF/Ollama.
+**Backend:** FastAPI, SQLAlchemy 2, PostgreSQL, JWT (argon2).
+**Frontend:** React 18, Vite, TypeScript, Tailwind, Recharts.
 
-## Resume bullet
-Built a QLoRA fine-tuning pipeline (SFT → DPO) for Qwen2.5-7B into a structured
-fitness-coaching model with tool-grounded nutrition and injury-aware safety. Via an
-**ablation** identified the SFT checkpoint as the best model and, after fixing a train/serve
-prompt skew (schema 0%→97%) and a generation-truncation issue, reached **97% valid-schema
-output and 84% overall accuracy** on a held-out eval set.
+## 📝 Resume bullet
+> Fine-tuned Qwen2.5-7B (QLoRA, SFT→DPO) into a structured fitness-coaching model with
+> tool-grounded nutrition and injury-aware safety; built a held-out eval harness reaching
+> **97% valid-schema output and 84% overall accuracy**, and diagnosed a train/serve prompt
+> skew (schema 0%→97%). Shipped it in a full-stack app (FastAPI + PostgreSQL + React) with a
+> swappable model-serving layer (Ollama / vLLM / hosted API).
 
-_(Note: SFT and DPO were both implemented; the 97% figure is the evaluated/shipped SFT model.)_
+_General fitness guidance, not medical advice._
